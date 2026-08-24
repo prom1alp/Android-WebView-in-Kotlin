@@ -23,4 +23,8 @@
     <color name="button_text">#FFFFFF</color>
     <color name="gradient_start">#667eea</color>
     <color name="gradient_end">#764ba2</color>
+
+    <color name="colorWhite">#FFFFFF</color>
+    <color name="colorBlack">#000000</color>
+    <color name="colorTransparent">#00000000</color>
 </resources>
