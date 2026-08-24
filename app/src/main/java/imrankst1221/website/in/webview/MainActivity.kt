@@ -13,7 +13,11 @@ import android.os.Handler
 import android.os.Looper
 import android.view.KeyEvent
 import android.view.View
-import android.webkit.*
+import android.webkit.WebChromeClient
+import android.webkit.WebResourceRequest
+import android.webkit.WebSettings
+import android.webkit.WebView
+import android.webkit.WebViewClient
 import android.widget.ProgressBar
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -29,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private var doubleBackToExitPressedOnce = false
 
     companion object {
-        private const val URL = "https://питомец-тут.рф" // Замените на ваш URL
+        private const val URL = "https://xn--80aodgh.xn--p1ai/" // Ваш URL
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -73,7 +77,6 @@ class MainActivity : AppCompatActivity() {
                 
                 // Кэширование
                 cacheMode = WebSettings.LOAD_DEFAULT
-                setAppCacheEnabled(true)
             }
 
             webViewClient = MyWebViewClient()
@@ -121,20 +124,14 @@ class MainActivity : AppCompatActivity() {
             return false
         }
 
-        // Исправленный метод onDownloadStart с игнорированием неиспользуемых параметров
-        @Suppress("UNUSED_PARAMETER")
-        override fun onDownloadStart(
-            url: String?,
-            _userAgent: String?,
-            _contentDisposition: String?,
-            _mimetype: String?,
-            _contentLength: Long?
-        ) {
-            // Обработка скачивания файлов
-            if (url != null) {
+        // Обработка скачивания файлов
+        override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
+            if (url != null && url.startsWith("http") && !url.startsWith(URL)) {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 startActivity(intent)
+                return true
             }
+            return false
         }
     }
 
