@@ -6,7 +6,6 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
-import android.net.NetworkInfo
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -110,7 +109,7 @@ class MainActivity : Activity() {
             layoutNoInternet.visibility = View.VISIBLE
             return
         }
-        
+
         mWebView.isFocusable = true
         mWebView.isFocusableInTouchMode = true
         mWebView.settings.javaScriptEnabled = true
@@ -120,14 +119,9 @@ class MainActivity : Activity() {
         mWebView.settings.mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
 
         mWebView.settings.domStorageEnabled = true
-        // 🔥 УДАЛЕНА ОШИБОЧНАЯ СТРОКА: mWebView.settings.setAppCacheEnabled(true)
-        // Вместо неё используем современный подход
-        mWebView.settings.cacheMode = WebSettings.LOAD_DEFAULT
-        
-        // Включаем базу данных (если нужно)
         mWebView.settings.databaseEnabled = true
-
         mWebView.settings.setSupportMultipleWindows(false)
+
         mWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, url: String?): Boolean {
                 Log.d(TAG, "URL: " + url!!)
@@ -167,8 +161,9 @@ class MainActivity : Activity() {
 
         mWebView.webChromeClient = object : WebChromeClient() {
             override fun onShowFileChooser(
-                    webView: WebView, filePathCallback: ValueCallback<Array<Uri>>,
-                    fileChooserParams: WebChromeClient.FileChooserParams): Boolean {
+                webView: WebView, filePathCallback: ValueCallback<Array<Uri>>,
+                fileChooserParams: WebChromeClient.FileChooserParams
+            ): Boolean {
                 if (mFilePathCallback != null) {
                     mFilePathCallback!!.onReceiveValue(null)
                 }
@@ -187,7 +182,7 @@ class MainActivity : Activity() {
                     if (photoFile != null) {
                         mCameraPhotoPath = "file:" + photoFile.absolutePath
                         takePictureIntent.putExtra(MediaStore.EXTRA_OUTPUT,
-                                Uri.fromFile(photoFile))
+                            Uri.fromFile(photoFile))
                     } else {
                         takePictureIntent = null
                     }
@@ -220,11 +215,12 @@ class MainActivity : Activity() {
         val timeStamp = SimpleDateFormat("yyyyMMdd_HHmmss").format(Date())
         val imageFileName = "JPEG_" + timeStamp + "_"
         val storageDir = Environment.getExternalStoragePublicDirectory(
-                Environment.DIRECTORY_PICTURES)
+            Environment.DIRECTORY_PICTURES
+        )
         return File.createTempFile(
-                imageFileName,
-                ".jpg",
-                storageDir
+            imageFileName,
+            ".jpg",
+            storageDir
         )
     }
 
@@ -287,22 +283,19 @@ class MainActivity : Activity() {
             return SecretKeySpec(key, "AES")
         }
 
+        // ИСПРАВЛЕННЫЙ МЕТОД ПРОВЕРКИ ИНТЕРНЕТА
         fun internetCheck(context: Context): Boolean {
-            var available = false
-            val connectivity = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            val connectivityManager =
+                context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
 
-            if (connectivity != null) {
-                val networkInfo = connectivity.allNetworkInfo
-                if (networkInfo != null) {
-                    for (i in networkInfo.indices) {
-                        if (networkInfo[i].state == NetworkInfo.State.CONNECTED) {
-                            available = true
-                            break
-                        }
-                    }
-                }
+            return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                val network = connectivityManager.activeNetwork
+                network != null
+            } else {
+                @Suppress("DEPRECATION")
+                val networkInfo = connectivityManager.activeNetworkInfo
+                networkInfo != null && networkInfo.isConnected
             }
-            return available
         }
     }
 }
