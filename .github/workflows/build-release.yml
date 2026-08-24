@@ -3,6 +3,8 @@ name: Build Release APK
 on:
   push:
     branches: [ main ]
+  pull_request:
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -10,7 +12,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v4
+    - name: Checkout code
+      uses: actions/checkout@v4
 
     - name: Set up JDK 17
       uses: actions/setup-java@v4
@@ -18,35 +21,16 @@ jobs:
         java-version: '17'
         distribution: 'temurin'
 
-    - name: Setup Android SDK
-      uses: android-actions/setup-android@v3
-
-    - name: Check KEYSTORE_BASE64 secret
-      run: |
-        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
-          echo "✅ KEYSTORE_BASE64 exists"
-          echo "Length: $(echo -n '${{ secrets.KEYSTORE_BASE64 }}' | wc -c)"
-        else
-          echo "❌ KEYSTORE_BASE64 is EMPTY!"
-          exit 1
-        fi
-
-    - name: Create keystore file
-      run: |
-        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/my-release-key.jks
-        echo "Checking keystore file:"
-        ls -la app/my-release-key.jks
-        file app/my-release-key.jks
-
-    - name: Give permission to gradlew
+    - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build Release APK
-      run: ./gradlew assembleRelease
+    - name: Build with Gradle
       env:
+        KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      run: ./gradlew assembleRelease
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
