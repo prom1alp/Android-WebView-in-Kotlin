@@ -13,8 +13,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.os.Handler
-import android.os.Looper
+import android.webkit.DownloadListener
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -22,14 +21,10 @@ import android.widget.Button
 import android.widget.ProgressBar
 import android.widget.RelativeLayout
 import android.widget.Toast
-import androidx.appcompat.app.AlertDialog
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
-import org.json.JSONObject
 import java.io.File
-import java.net.HttpURLConnection
-import java.net.URL
 
 class MainActivity : Activity() {
 
@@ -40,8 +35,6 @@ class MainActivity : Activity() {
     private lateinit var btnTryAgain: Button
 
     private var downloadId: Long = -1
-    private var apkUrl: String = ""
-    private var isUpdateCheckDone = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -70,6 +63,7 @@ class MainActivity : Activity() {
         // ОБРАБОТКА ССЫЛОК
         mWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
+                // Если ссылка на APK - скачиваем сами
                 if (url.endsWith(".apk") || url.contains(".apk?")) {
                     downloadApk(url)
                     return true
@@ -103,89 +97,19 @@ class MainActivity : Activity() {
         btnTryAgain.setOnClickListener {
             layoutNoInternet.visibility = android.view.View.GONE
             layoutSplash.visibility = android.view.View.VISIBLE
-            checkForUpdates()
+            mWebView.loadUrl("https://xn----itbiqjeweaj4a.xn--p1ai/")
         }
 
-        // ЗАПУСКАЕМ ПРОВЕРКУ ОБНОВЛЕНИЙ
-        checkForUpdates()
-    }
-
-    // ============================================
-    // 1. ПРОВЕРКА ОБНОВЛЕНИЙ НА СЕРВЕРЕ
-    // ============================================
-    private fun checkForUpdates() {
-        // Загружаем сайт
+        // ЗАГРУЖАЕМ САЙТ
         mWebView.loadUrl("https://xn----itbiqjeweaj4a.xn--p1ai/")
-
-        // Проверяем версии в фоновом потоке
-        Thread {
-            try {
-                val currentVersion = getAppVersionCode()
-
-                val url = URL("https://xn----itbiqjeweaj4a.xn--p1ai/version.json")
-                val connection = url.openConnection() as HttpURLConnection
-                connection.connectTimeout = 5000
-                connection.readTimeout = 5000
-                connection.requestMethod = "GET"
-
-                if (connection.responseCode == HttpURLConnection.HTTP_OK) {
-                    val response = connection.inputStream.bufferedReader().readText()
-                    val json = JSONObject(response)
-
-                    val latestVersion = json.getInt("versionCode")
-                    apkUrl = json.getString("apkUrl")
-
-                    if (latestVersion > currentVersion) {
-                        runOnUiThread {
-                            showUpdateDialog()
-                        }
-                    }
-                }
-            } catch (e: Exception) {
-                e.printStackTrace()
-            }
-        }.start()
     }
 
     // ============================================
-    // 2. ПОЛУЧИТЬ ТЕКУЩУЮ ВЕРСИЮ
-    // ============================================
-    private fun getAppVersionCode(): Int {
-        return try {
-            val pInfo = packageManager.getPackageInfo(packageName, 0)
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-                pInfo.longVersionCode.toInt()
-            } else {
-                @Suppress("DEPRECATION")
-                pInfo.versionCode
-            }
-        } catch (e: Exception) {
-            1
-        }
-    }
-
-    // ============================================
-    // 3. ДИАЛОГ ОБНОВЛЕНИЯ
-    // ============================================
-    private fun showUpdateDialog() {
-        AlertDialog.Builder(this)
-            .setTitle("📱 Доступно обновление!")
-            .setMessage("Вышла новая версия приложения. Хотите установить её сейчас?")
-            .setPositiveButton("Обновить") { _, _ ->
-                downloadApk(apkUrl)
-            }
-            .setNegativeButton("Позже") { dialog, _ ->
-                dialog.dismiss()
-            }
-            .setCancelable(false)
-            .show()
-    }
-
-    // ============================================
-    // 4. СКАЧАТЬ APK
+    // СКАЧАТЬ APK
     // ============================================
     private fun downloadApk(url: String) {
         try {
+            // Проверяем разрешение (для Android 6+)
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
                     != PackageManager.PERMISSION_GRANTED) {
@@ -213,7 +137,7 @@ class MainActivity : Activity() {
             val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
             downloadId = downloadManager.enqueue(request)
 
-            // Регистрируем приемник ДО загрузки
+            // Регистрируем приемник
             try {
                 unregisterReceiver(downloadReceiver)
             } catch (e: Exception) {}
@@ -221,12 +145,12 @@ class MainActivity : Activity() {
 
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(this, "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Ошибка загрузки", Toast.LENGTH_SHORT).show()
         }
     }
 
     // ============================================
-    // 5. ПРИЕМНИК ДЛЯ ЗАГРУЗКИ
+    // ПРИЕМНИК ЗАГРУЗКИ
     // ============================================
     private val downloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
@@ -234,9 +158,7 @@ class MainActivity : Activity() {
                 val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
                 if (id == downloadId) {
                     Toast.makeText(context, "Загрузка завершена!", Toast.LENGTH_LONG).show()
-                    Handler(Looper.getMainLooper()).postDelayed({
-                        installApk()
-                    }, 1000)
+                    installApk()
                 }
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -245,7 +167,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================
-    // 6. УСТАНОВКА APK
+    // УСТАНОВКА APK
     // ============================================
     private fun installApk() {
         try {
@@ -276,12 +198,12 @@ class MainActivity : Activity() {
 
         } catch (e: Exception) {
             e.printStackTrace()
-            Toast.makeText(this, "Ошибка установки: ${e.message}", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Ошибка установки", Toast.LENGTH_SHORT).show()
         }
     }
 
     // ============================================
-    // 7. РАЗРЕШЕНИЯ
+    // РАЗРЕШЕНИЯ
     // ============================================
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -291,7 +213,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================
-    // 8. КНОПКА НАЗАД
+    // КНОПКА НАЗАД
     // ============================================
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
         if (keyCode == android.view.KeyEvent.KEYCODE_BACK && mWebView.canGoBack()) {
@@ -302,14 +224,12 @@ class MainActivity : Activity() {
     }
 
     // ============================================
-    // 9. ЖИЗНЕННЫЙ ЦИКЛ (исправлено)
+    // ЖИЗНЕННЫЙ ЦИКЛ
     // ============================================
     override fun onDestroy() {
         super.onDestroy()
         try {
             unregisterReceiver(downloadReceiver)
-        } catch (e: Exception) {
-            // Приемник уже отключен
-        }
+        } catch (e: Exception) {}
     }
 }
