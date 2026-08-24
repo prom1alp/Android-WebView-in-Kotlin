@@ -13,7 +13,8 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.os.Environment
-import android.webkit.DownloadListener
+import android.os.Handler
+import android.os.Looper
 import android.webkit.WebSettings
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -40,6 +41,7 @@ class MainActivity : Activity() {
 
     private var downloadId: Long = -1
     private var apkUrl: String = ""
+    private var isUpdateCheckDone = false
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -65,16 +67,6 @@ class MainActivity : Activity() {
             displayZoomControls = false
         }
 
-        // ЗАГРУЗКА ФАЙЛОВ (если ссылка на APK)
-        mWebView.setDownloadListener { url, _, _, _, _ ->
-            if (url.endsWith(".apk") || url.contains(".apk?")) {
-                downloadApk(url)
-            } else {
-                val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
-                startActivity(intent)
-            }
-        }
-
         // ОБРАБОТКА ССЫЛОК
         mWebView.webViewClient = object : WebViewClient() {
             override fun shouldOverrideUrlLoading(view: WebView, url: String): Boolean {
@@ -90,6 +82,20 @@ class MainActivity : Activity() {
                 super.onPageFinished(view, url)
                 progressBar.visibility = android.view.View.GONE
                 layoutSplash.visibility = android.view.View.GONE
+            }
+        }
+
+        // ЗАГРУЗКА ФАЙЛОВ
+        mWebView.setDownloadListener { url, _, _, _, _ ->
+            if (url.endsWith(".apk") || url.contains(".apk?")) {
+                downloadApk(url)
+            } else {
+                try {
+                    val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+                    startActivity(intent)
+                } catch (e: Exception) {
+                    Toast.makeText(this@MainActivity, "Не удалось открыть ссылку", Toast.LENGTH_SHORT).show()
+                }
             }
         }
 
@@ -142,7 +148,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================
-    // 2. ПОЛУЧИТЬ ТЕКУЩУЮ ВЕРСИЮ ПРИЛОЖЕНИЯ
+    // 2. ПОЛУЧИТЬ ТЕКУЩУЮ ВЕРСИЮ
     // ============================================
     private fun getAppVersionCode(): Int {
         return try {
@@ -159,7 +165,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================
-    // 3. ПОКАЗАТЬ ДИАЛОГ ОБНОВЛЕНИЯ
+    // 3. ДИАЛОГ ОБНОВЛЕНИЯ
     // ============================================
     private fun showUpdateDialog() {
         AlertDialog.Builder(this)
@@ -179,77 +185,103 @@ class MainActivity : Activity() {
     // 4. СКАЧАТЬ APK
     // ============================================
     private fun downloadApk(url: String) {
-        // Проверяем разрешение (для Android 6+)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                != PackageManager.PERMISSION_GRANTED) {
-                ActivityCompat.requestPermissions(
-                    this,
-                    arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
-                    100
-                )
-                Toast.makeText(this, "Разрешите доступ к хранилищу", Toast.LENGTH_LONG).show()
-                return
+        try {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                if (ContextCompat.checkSelfPermission(this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                    != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(
+                        this,
+                        arrayOf(Manifest.permission.WRITE_EXTERNAL_STORAGE),
+                        100
+                    )
+                    Toast.makeText(this, "Разрешите доступ к хранилищу", Toast.LENGTH_LONG).show()
+                    return
+                }
             }
+
+            Toast.makeText(this, "Загрузка обновления...", Toast.LENGTH_SHORT).show()
+
+            val request = DownloadManager.Request(Uri.parse(url))
+            request.setTitle("Обновление Питомец Тут")
+            request.setDescription("Загрузка новой версии...")
+            request.setDestinationInExternalPublicDir(
+                Environment.DIRECTORY_DOWNLOADS,
+                "ПитомецТут_update.apk"
+            )
+            request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
+
+            val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
+            downloadId = downloadManager.enqueue(request)
+
+            // Регистрируем приемник ДО загрузки
+            try {
+                unregisterReceiver(downloadReceiver)
+            } catch (e: Exception) {}
+            registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Ошибка загрузки: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-
-        Toast.makeText(this, "Загрузка обновления...", Toast.LENGTH_SHORT).show()
-
-        val request = DownloadManager.Request(Uri.parse(url))
-        request.setTitle("Обновление Питомец Тут")
-        request.setDescription("Загрузка новой версии...")
-        request.setDestinationInExternalPublicDir(
-            Environment.DIRECTORY_DOWNLOADS,
-            "ПитомецТут_update.apk"
-        )
-        request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-
-        val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-        downloadId = downloadManager.enqueue(request)
     }
 
     // ============================================
-    // 5. УСТАНОВИТЬ APK ПОСЛЕ ЗАГРУЗКИ
+    // 5. ПРИЕМНИК ДЛЯ ЗАГРУЗКИ
     // ============================================
     private val downloadReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context, intent: Intent) {
-            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
-            if (id == downloadId) {
-                Toast.makeText(context, "Загрузка завершена!", Toast.LENGTH_LONG).show()
-                installApk()
+            try {
+                val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1)
+                if (id == downloadId) {
+                    Toast.makeText(context, "Загрузка завершена!", Toast.LENGTH_LONG).show()
+                    Handler(Looper.getMainLooper()).postDelayed({
+                        installApk()
+                    }, 1000)
+                }
+            } catch (e: Exception) {
+                e.printStackTrace()
             }
         }
     }
 
+    // ============================================
+    // 6. УСТАНОВКА APK
+    // ============================================
     private fun installApk() {
-        val file = File(
-            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
-            "ПитомецТут_update.apk"
-        )
+        try {
+            val file = File(
+                Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+                "ПитомецТут_update.apk"
+            )
 
-        if (!file.exists()) {
-            Toast.makeText(this, "Файл не найден!", Toast.LENGTH_SHORT).show()
-            return
+            if (!file.exists()) {
+                Toast.makeText(this, "Файл обновления не найден!", Toast.LENGTH_SHORT).show()
+                return
+            }
+
+            val intent = Intent(Intent.ACTION_VIEW)
+            val apkUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
+            } else {
+                Uri.fromFile(file)
+            }
+
+            intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
+            intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            }
+
+            startActivity(intent)
+
+        } catch (e: Exception) {
+            e.printStackTrace()
+            Toast.makeText(this, "Ошибка установки: ${e.message}", Toast.LENGTH_SHORT).show()
         }
-
-        val intent = Intent(Intent.ACTION_VIEW)
-        val apkUri = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            FileProvider.getUriForFile(this, "${packageName}.fileprovider", file)
-        } else {
-            Uri.fromFile(file)
-        }
-
-        intent.setDataAndType(apkUri, "application/vnd.android.package-archive")
-        intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-        }
-
-        startActivity(intent)
     }
 
     // ============================================
-    // 6. ОБРАБОТКА РАЗРЕШЕНИЙ
+    // 7. РАЗРЕШЕНИЯ
     // ============================================
     override fun onRequestPermissionsResult(requestCode: Int, permissions: Array<out String>, grantResults: IntArray) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
@@ -259,7 +291,7 @@ class MainActivity : Activity() {
     }
 
     // ============================================
-    // 7. КНОПКА НАЗАД
+    // 8. КНОПКА НАЗАД
     // ============================================
     override fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean {
         if (keyCode == android.view.KeyEvent.KEYCODE_BACK && mWebView.canGoBack()) {
@@ -270,24 +302,14 @@ class MainActivity : Activity() {
     }
 
     // ============================================
-    // 8. ЖИЗНЕННЫЙ ЦИКЛ
+    // 9. ЖИЗНЕННЫЙ ЦИКЛ (исправлено)
     // ============================================
-    override fun onResume() {
-        super.onResume()
-        registerReceiver(downloadReceiver, IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE))
-    }
-
-    override fun onPause() {
-        super.onPause()
-        try {
-            unregisterReceiver(downloadReceiver)
-        } catch (e: Exception) {}
-    }
-
     override fun onDestroy() {
         super.onDestroy()
         try {
             unregisterReceiver(downloadReceiver)
-        } catch (e: Exception) {}
+        } catch (e: Exception) {
+            // Приемник уже отключен
+        }
     }
 }
