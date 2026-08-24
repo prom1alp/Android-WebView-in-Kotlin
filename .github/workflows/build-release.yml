@@ -21,13 +21,22 @@ jobs:
     - name: Setup Android SDK
       uses: android-actions/setup-android@v3
 
-    - name: Create keystore file from secret
+    - name: Check KEYSTORE_BASE64 secret
+      run: |
+        if [ -n "${{ secrets.KEYSTORE_BASE64 }}" ]; then
+          echo "✅ KEYSTORE_BASE64 exists"
+          echo "Length: $(echo -n '${{ secrets.KEYSTORE_BASE64 }}' | wc -c)"
+        else
+          echo "❌ KEYSTORE_BASE64 is EMPTY!"
+          exit 1
+        fi
+
+    - name: Create keystore file
       run: |
         echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/my-release-key.jks
-
-    - name: Verify keystore exists
-      run: |
+        echo "Checking keystore file:"
         ls -la app/my-release-key.jks
+        file app/my-release-key.jks
 
     - name: Give permission to gradlew
       run: chmod +x gradlew
