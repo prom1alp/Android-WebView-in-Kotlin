@@ -33,7 +33,7 @@ class MainActivity : AppCompatActivity() {
     private var doubleBackToExitPressedOnce = false
 
     companion object {
-        private const val URL = "https://xn--80aodgh.xn--p1ai/" // Ваш URL
+        private const val URL = "https://xn--80aodgh.xn--p1ai/"
     }
 
     @SuppressLint("SetJavaScriptEnabled")
@@ -48,7 +48,6 @@ class MainActivity : AppCompatActivity() {
         setupWebView()
         setupSwipeRefresh()
 
-        // Проверка интернета
         if (!isNetworkAvailable()) {
             showNoInternetDialog()
         } else {
@@ -70,19 +69,16 @@ class MainActivity : AppCompatActivity() {
                 defaultTextEncodingName = "utf-8"
                 loadsImagesAutomatically = true
                 
-                // Для Android 5.0+
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
                     mixedContentMode = WebSettings.MIXED_CONTENT_ALWAYS_ALLOW
                 }
                 
-                // Кэширование
                 cacheMode = WebSettings.LOAD_DEFAULT
             }
 
             webViewClient = MyWebViewClient()
             webChromeClient = MyWebChromeClient()
 
-            // Обработка клавиши "Назад"
             setOnKeyListener { _, keyCode, event ->
                 if (event.action == KeyEvent.ACTION_DOWN && keyCode == KeyEvent.KEYCODE_BACK) {
                     if (canGoBack()) {
@@ -115,7 +111,6 @@ class MainActivity : AppCompatActivity() {
 
         override fun shouldOverrideUrlLoading(view: WebView?, request: WebResourceRequest?): Boolean {
             val url = request?.url.toString()
-            // Если ссылка ведет на внешний сайт - открываем в браузере
             if (!url.startsWith(URL) && url.startsWith("http")) {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
                 startActivity(intent)
@@ -124,7 +119,7 @@ class MainActivity : AppCompatActivity() {
             return false
         }
 
-        // Обработка скачивания файлов
+        @Suppress("DEPRECATION")
         override fun shouldOverrideUrlLoading(view: WebView?, url: String?): Boolean {
             if (url != null && url.startsWith("http") && !url.startsWith(URL)) {
                 val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
@@ -149,7 +144,6 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    // Проверка наличия интернета
     private fun isNetworkAvailable(): Boolean {
         val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -182,7 +176,6 @@ class MainActivity : AppCompatActivity() {
             .show()
     }
 
-    // Обработка кнопки "Назад"
     override fun onBackPressed() {
         if (webView.canGoBack()) {
             webView.goBack()
