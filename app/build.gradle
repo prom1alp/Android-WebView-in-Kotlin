@@ -4,11 +4,11 @@ plugins {
 }
 
 android {
-    namespace 'com.prom1alp.pethere'
+    namespace 'imrankst1221.website.in.webview'  // ← ИЗМЕНИЛИ ОБРАТНО!
     compileSdk 34
 
     defaultConfig {
-        applicationId "com.prom1alp.pethere"
+        applicationId "imrankst1221.website.in.webview"
         minSdk 21
         targetSdk 34
         versionCode 1
