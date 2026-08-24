@@ -1,8 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#ffba92</color>
-    <color name="colorPrimaryDark">#ff8080</color>
-    <color name="colorAccent">#F1C387</color>
-    <color name="colorText">#A2A2A2</color>
-    <color name="colorWhite">#F2F1F1</color>
+    <!-- Основные цвета из вашего сайта -->
+    <color name="colorPrimary">#667eea</color>
+    <color name="colorPrimaryDark">#764ba2</color>
+    <color name="colorAccent">#ff006e</color>
+    
+    <!-- Дополнительные цвета -->
+    <color name="colorOrange">#ff6b00</color>
+    <color name="colorYellow">#fbbf24</color>
+    <color name="colorGreen">#00ff88</color>
+    <color name="colorCyan">#00d4ff</color>
+    <color name="colorPurple">#a855f7</color>
+    
+    <!-- Фоновые цвета -->
+    <color name="colorBackground">#FFFFFF</color>
+    <color name="colorBackgroundDark">#0a0a1e</color>
+    <color name="colorText">#212121</color>
+    
+    <!-- Для элементов -->
+    <color name="splash_background">#667eea</color>
+    <color name="button_background">#ff006e</color>
+    <color name="button_text">#FFFFFF</color>
+    <color name="gradient_start">#667eea</color>
+    <color name="gradient_end">#764ba2</color>
 </resources>
