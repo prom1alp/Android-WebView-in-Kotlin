@@ -1,3 +1,6 @@
 <resources>
-    <string name="app_name">InfixSoft</string>
+    <string name="app_name">Питомец Тут</string>
+    <string name="no_internet">Нет подключения к интернету</string>
+    <string name="try_again">Попробовать снова</string>
+    <string name="exit_message">Нажмите еще раз для выхода</string>
 </resources>
