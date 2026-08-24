@@ -15,30 +15,43 @@ android {
         versionName "1.0.2"
     }
 
-
     signingConfigs {
-        create("release") {
-            storeFile = file("my-release-key.jks")
-            storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
-            keyAlias = System.getenv("KEY_ALIAS") ?: ""
-            keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+        release {
+            // Получаем base64 из секретов GitHub
+            def keystoreBase64 = System.getenv("KEYSTORE_BASE64")
+            if (keystoreBase64 != null && !keystoreBase64.isEmpty()) {
+                // Создаем временный файл из base64
+                def keystoreFile = File.createTempFile("keystore", ".jks")
+                keystoreFile.deleteOnExit()
+                keystoreFile.bytes = Base64.getDecoder().decode(keystoreBase64)
+                
+                storeFile = keystoreFile
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            } else {
+                // Для локальной разработки (опционально)
+                storeFile = file("my-release-key.jks")
+                storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
+                keyAlias = System.getenv("KEY_ALIAS") ?: ""
+                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+            }
         }
     }
 
-
     buildTypes {
         release {
-
-            signingConfig = signingConfigs.getByName("release")
-
+            signingConfig signingConfigs.release
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
+    
     compileOptions {
         sourceCompatibility JavaVersion.VERSION_1_8
         targetCompatibility JavaVersion.VERSION_1_8
     }
+    
     kotlinOptions {
         jvmTarget = '1.8'
     }
@@ -49,7 +62,6 @@ dependencies {
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
     
-    // Добавляем тесты
     testImplementation 'junit:junit:4.13.2'
     androidTestImplementation 'androidx.test.ext:junit:1.1.5'
     androidTestImplementation 'androidx.test.espresso:espresso-core:3.5.1'
