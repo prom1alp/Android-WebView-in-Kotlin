@@ -1,3 +1,5 @@
+import java.util.Base64
+
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
@@ -30,7 +32,7 @@ android {
                 keyAlias = System.getenv("KEY_ALIAS") ?: ""
                 keyPassword = System.getenv("KEY_PASSWORD") ?: ""
             } else {
-                // Для локальной разработки (опционально)
+                // Для локальной разработки
                 storeFile = file("my-release-key.jks")
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
                 keyAlias = System.getenv("KEY_ALIAS") ?: ""
