@@ -92,7 +92,7 @@
                 android:layout_below="@+id/img_no_internet"
                 android:layout_marginTop="20dp"
                 android:textSize="35dp"
-                android:textColor="@color/colorWhite"
+                android:textColor="#FFFFFF"
                 android:textStyle="bold"
                 android:layout_centerHorizontal="true"/>
 
@@ -104,7 +104,7 @@
                 android:layout_below="@+id/txt_title"
                 android:layout_marginTop="20dp"
                 android:textSize="18dp"
-                android:textColor="@color/colorWhite"
+                android:textColor="#FFFFFF"
                 android:layout_centerHorizontal="true"
                 android:textAlignment="center"
                 android:text="Нет подключения к интернету.\nПроверьте соединение или попробуйте снова"/>
@@ -118,7 +118,7 @@
                 android:layout_centerHorizontal="true"
                 android:layout_below="@+id/txt_detail"
                 android:background="@drawable/bg_button_gradient"
-                android:textColor="@color/colorWhite"
+                android:textColor="#FFFFFF"
                 android:text="Попробовать снова"
                 android:textSize="16sp"
                 android:fontFamily="sans-serif-medium" />
