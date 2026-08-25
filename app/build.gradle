@@ -19,10 +19,8 @@ android {
 
     signingConfigs {
         release {
-            // Получаем base64 из секретов GitHub
             def keystoreBase64 = System.getenv("KEYSTORE_BASE64")
             if (keystoreBase64 != null && !keystoreBase64.isEmpty()) {
-                // Создаем временный файл из base64
                 def keystoreFile = File.createTempFile("keystore", ".jks")
                 keystoreFile.deleteOnExit()
                 keystoreFile.bytes = Base64.getDecoder().decode(keystoreBase64)
@@ -32,7 +30,6 @@ android {
                 keyAlias = System.getenv("KEY_ALIAS") ?: ""
                 keyPassword = System.getenv("KEY_PASSWORD") ?: ""
             } else {
-                // Для локальной разработки
                 storeFile = file("my-release-key.jks")
                 storePassword = System.getenv("KEYSTORE_PASSWORD") ?: ""
                 keyAlias = System.getenv("KEY_ALIAS") ?: ""
