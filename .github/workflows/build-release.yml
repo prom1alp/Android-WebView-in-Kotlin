@@ -20,16 +20,10 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
-    - name: Decrypt keystore
+    - name: Decode keystore from base64
       run: |
-        cat <<'EOF' > my-release-key.jks.enc
-        ${{ secrets.KEYSTORE_FILE }}
-        EOF
-        cat <<'EOF' > keystore.properties.enc
-        ${{ secrets.KEYSTORE_PROPERTIES }}
-        EOF
-        openssl enc -d -aes-256-cbc -k "${{ secrets.KEYSTORE_DECRYPT_KEY }}" -in my-release-key.jks.enc -out app/my-release-key.jks
-        openssl enc -d -aes-256-cbc -k "${{ secrets.KEYSTORE_DECRYPT_KEY }}" -in keystore.properties.enc -out keystore.properties
+        echo "${{ secrets.KEYSTORE_BASE64 }}" | base64 -d > app/my-release-key.jks
+        echo "${{ secrets.KEYSTORE_PROPERTIES_BASE64 }}" | base64 -d > keystore.properties
 
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
