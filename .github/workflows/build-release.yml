@@ -22,8 +22,12 @@ jobs:
 
     - name: Decrypt keystore
       run: |
-        echo "${{ secrets.KEYSTORE_FILE }}" > my-release-key.jks.enc
-        echo "${{ secrets.KEYSTORE_PROPERTIES }}" > keystore.properties.enc
+        cat <<'EOF' > my-release-key.jks.enc
+        ${{ secrets.KEYSTORE_FILE }}
+        EOF
+        cat <<'EOF' > keystore.properties.enc
+        ${{ secrets.KEYSTORE_PROPERTIES }}
+        EOF
         openssl enc -d -aes-256-cbc -k "${{ secrets.KEYSTORE_DECRYPT_KEY }}" -in my-release-key.jks.enc -out app/my-release-key.jks
         openssl enc -d -aes-256-cbc -k "${{ secrets.KEYSTORE_DECRYPT_KEY }}" -in keystore.properties.enc -out keystore.properties
 
