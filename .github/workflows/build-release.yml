@@ -1,4 +1,4 @@
-name: Build APK
+name: Build Release APK
 
 on:
   push:
@@ -20,14 +20,25 @@ jobs:
         distribution: 'temurin'
         cache: gradle
 
+    - name: Decrypt keystore
+      run: |
+        echo "${{ secrets.KEYSTORE_FILE }}" > my-release-key.jks.enc
+        echo "${{ secrets.KEYSTORE_PROPERTIES }}" > keystore.properties.enc
+        openssl enc -d -aes-256-cbc -k "${{ secrets.KEYSTORE_DECRYPT_KEY }}" -in my-release-key.jks.enc -out app/my-release-key.jks
+        openssl enc -d -aes-256-cbc -k "${{ secrets.KEYSTORE_DECRYPT_KEY }}" -in keystore.properties.enc -out keystore.properties
+
     - name: Grant execute permission for gradlew
       run: chmod +x gradlew
 
-    - name: Build Debug APK
-      run: ./gradlew assembleDebug    # ← Собираем DEBUG (не требует ключа)
+    - name: Build Release APK
+      run: ./gradlew assembleRelease
+      env:
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEY_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: app-debug
-        path: app/build/outputs/apk/debug/*.apk
+        name: app-release
+        path: app/build/outputs/apk/release/*.apk
