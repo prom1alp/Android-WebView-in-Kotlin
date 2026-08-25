@@ -2,7 +2,7 @@
 <resources>
     <!-- Основные цвета из вашего сайта -->
     <color name="colorPrimary">#667eea</color>
-    <color name="colorPrimaryDark">#764ba2</color>
+    <color name="colorPrimaryDark">#d0aef3</color>
     <color name="colorAccent">#ff006e</color>
     
     <!-- Дополнительные цвета -->
