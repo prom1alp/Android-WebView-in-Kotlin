@@ -23,6 +23,7 @@ import android.widget.RelativeLayout
 import android.widget.Toast
 import androidx.annotation.RequiresApi
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.swiperefreshlayout.widget.SwipeRefreshLayout  // <-- НОВЫЙ ИМПОРТ
 import java.io.File
 import java.io.IOException
 import java.security.NoSuchAlgorithmException
@@ -50,6 +51,7 @@ class MainActivity : Activity() {
     private var viewSplash: View? = null
     private lateinit var layoutSplash: RelativeLayout
     private lateinit var layoutNoInternet: RelativeLayout
+    private lateinit var swipeRefresh: SwipeRefreshLayout  // <-- НОВАЯ ПЕРЕМЕННАЯ
 
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -64,11 +66,27 @@ class MainActivity : Activity() {
         btnTryAgain = findViewById<View>(R.id.btn_try_again) as Button
         layoutSplash = findViewById<View>(R.id.layout_splash) as RelativeLayout
         layoutNoInternet = findViewById<View>(R.id.layout_no_internet) as RelativeLayout
+        swipeRefresh = findViewById(R.id.swipe_refresh)  // <-- ИНИЦИАЛИЗАЦИЯ
+
+        // ============ НОВЫЙ КОД: НАСТРОЙКА СВАЙПА ДЛЯ ОБНОВЛЕНИЯ ============
+        // Когда пользователь тянет вниз - перезагружаем страницу
+        swipeRefresh.setOnRefreshListener {
+            mWebView.reload()  // Перезагружаем текущую страницу
+        }
+        // Цвет индикатора загрузки при свайпе
+        swipeRefresh.setColorSchemeResources(
+            android.R.color.holo_blue_bright,
+            android.R.color.holo_green_light,
+            android.R.color.holo_orange_light,
+            android.R.color.holo_red_light
+        )
+        // ====================================================================
 
         requestForWebview()
 
         btnTryAgain.setOnClickListener {
             mWebView.visibility = View.GONE
+            swipeRefresh.visibility = View.GONE  // <-- СКРЫВАЕМ СВАЙП
             prgs.visibility = View.VISIBLE
             layoutSplash.visibility = View.VISIBLE
             layoutNoInternet.visibility = View.GONE
@@ -81,10 +99,12 @@ class MainActivity : Activity() {
             requestWebView()
             Handler(Looper.getMainLooper()).postDelayed({
                 prgs.visibility = View.VISIBLE
+                swipeRefresh.visibility = View.VISIBLE  // <-- ПОКАЗЫВАЕМ СВАЙП
                 mWebView.visibility = View.VISIBLE
             }, 3000)
         } else {
             mWebView.visibility = View.VISIBLE
+            swipeRefresh.visibility = View.VISIBLE  // <-- ПОКАЗЫВАЕМ СВАЙП
             prgs.visibility = View.GONE
             layoutSplash.visibility = View.GONE
             layoutNoInternet.visibility = View.GONE
@@ -96,11 +116,13 @@ class MainActivity : Activity() {
     private fun requestWebView() {
         if (internetCheck(mContext)) {
             mWebView.visibility = View.VISIBLE
+            swipeRefresh.visibility = View.VISIBLE  // <-- ПОКАЗЫВАЕМ СВАЙП
             layoutNoInternet.visibility = View.GONE
             mWebView.loadUrl(URL)
         } else {
             prgs.visibility = View.GONE
             mWebView.visibility = View.GONE
+            swipeRefresh.visibility = View.GONE  // <-- СКРЫВАЕМ СВАЙП
             layoutSplash.visibility = View.GONE
             layoutNoInternet.visibility = View.VISIBLE
             return
@@ -147,6 +169,7 @@ class MainActivity : Activity() {
                 } else {
                     prgs.visibility = View.GONE
                     mWebView.visibility = View.GONE
+                    swipeRefresh.visibility = View.GONE  // <-- СКРЫВАЕМ СВАЙП
                     layoutSplash.visibility = View.GONE
                     layoutNoInternet.visibility = View.VISIBLE
                 }
@@ -163,6 +186,12 @@ class MainActivity : Activity() {
             override fun onPageFinished(view: WebView, url: String) {
                 super.onPageFinished(view, url)
                 mLoaded = true
+                
+                // ============ НОВЫЙ КОД: СКРЫВАЕМ ИНДИКАТОР СВАЙПА ============
+                // Когда страница загрузилась - убираем крутящийся индикатор
+                swipeRefresh.isRefreshing = false
+                // =============================================================
+                
                 if (prgs.visibility == View.VISIBLE)
                     prgs.visibility = View.GONE
 
