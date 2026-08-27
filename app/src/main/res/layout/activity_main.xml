@@ -84,7 +84,6 @@
     </RelativeLayout>
 
     <!-- SwipeRefreshLayout - ОБНОВЛЕНИЕ СВАЙПОМ -->
-    <!-- Этот контейнер позволяет обновлять страницу свайпом вниз -->
     <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
         android:id="@+id/swipe_refresh"
         android:layout_width="match_parent"
