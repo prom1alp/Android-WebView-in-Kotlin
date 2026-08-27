@@ -15,7 +15,6 @@ android {
         versionName "1.0.3"
     }
 
-
     signingConfigs {
         create("release") {
             storeFile = file("my-release-key.jks")
@@ -25,12 +24,9 @@ android {
         }
     }
 
-
     buildTypes {
         release {
-
             signingConfig = signingConfigs.getByName("release")
-
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
@@ -48,6 +44,10 @@ dependencies {
     implementation 'androidx.core:core-ktx:1.12.0'
     implementation 'androidx.appcompat:appcompat:1.6.1'
     implementation 'com.google.android.material:material:1.11.0'
+    
+    // ============ НУЖНАЯ ЗАВИСИМОСТЬ ============
+    implementation 'androidx.swiperefreshlayout:swiperefreshlayout:1.1.0'
+    // =============================================
     
     // Добавляем тесты
     testImplementation 'junit:junit:4.13.2'
