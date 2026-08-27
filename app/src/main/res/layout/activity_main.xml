@@ -83,11 +83,19 @@
 
     </RelativeLayout>
 
-    <!-- WebView (поверх всего, но скрыт пока загрузка) -->
-    <WebView
-        android:id="@+id/webview"
+    <!-- SwipeRefreshLayout - ОБНОВЛЕНИЕ СВАЙПОМ -->
+    <!-- Этот контейнер позволяет обновлять страницу свайпом вниз -->
+    <androidx.swiperefreshlayout.widget.SwipeRefreshLayout
+        android:id="@+id/swipe_refresh"
         android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:visibility="gone" />
+        android:visibility="gone">
+
+        <WebView
+            android:id="@+id/webview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+    </androidx.swiperefreshlayout.widget.SwipeRefreshLayout>
 
 </RelativeLayout>
