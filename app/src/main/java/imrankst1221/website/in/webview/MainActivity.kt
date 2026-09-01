@@ -6,6 +6,7 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Bitmap
 import android.net.ConnectivityManager
+import android.net.NetworkCapabilities
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -53,6 +54,29 @@ class MainActivity : Activity() {
     private lateinit var layoutNoInternet: RelativeLayout
     private lateinit var swipeRefresh: SwipeRefreshLayout
 
+    // Мониторинг сети
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: android.net.Network) {
+            runOnUiThread {
+                // Интернет появился - скрываем заглушку
+                if (layoutNoInternet.visibility == View.VISIBLE) {
+                    layoutNoInternet.visibility = View.GONE
+                    mWebView.visibility = View.VISIBLE
+                    swipeRefresh.visibility = View.VISIBLE
+                    mWebView.reload()
+                    Toast.makeText(mContext, "Интернет восстановлен", Toast.LENGTH_SHORT).show()
+                }
+            }
+        }
+
+        override fun onLost(network: android.net.Network) {
+            runOnUiThread {
+                // Интернет пропал - показываем заглушку
+                showNoInternetScreen()
+            }
+        }
+    }
+
     @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -68,15 +92,21 @@ class MainActivity : Activity() {
         layoutNoInternet = findViewById<View>(R.id.layout_no_internet) as RelativeLayout
         swipeRefresh = findViewById(R.id.swipe_refresh)
 
-        // ========== ОЧИСТКА КЭША ПРИ ЗАГРУЗКЕ ПРИЛОЖЕНИЯ ==========
-        // Очищаем только кэш, НЕ трогаем cookies и сессию
+        // Очистка кэша при запуске
         mWebView.clearCache(true)
         Log.d(TAG, "Кэш очищен при запуске приложения")
-        // =========================================================
+
+        // Регистрируем мониторинг сети
+        registerNetworkCallback()
 
         // Настройка свайпа для обновления
         swipeRefresh.setOnRefreshListener {
-            mWebView.reload()
+            if (internetCheck(mContext)) {
+                mWebView.reload()
+            } else {
+                swipeRefresh.isRefreshing = false
+                showNoInternetScreen()
+            }
         }
         swipeRefresh.setColorSchemeResources(
             android.R.color.holo_blue_bright,
@@ -88,13 +118,48 @@ class MainActivity : Activity() {
         requestForWebview()
 
         btnTryAgain.setOnClickListener {
-            mWebView.visibility = View.GONE
-            swipeRefresh.visibility = View.GONE
-            prgs.visibility = View.VISIBLE
-            layoutSplash.visibility = View.VISIBLE
-            layoutNoInternet.visibility = View.GONE
-            requestForWebview()
+            if (internetCheck(mContext)) {
+                mWebView.visibility = View.GONE
+                swipeRefresh.visibility = View.GONE
+                prgs.visibility = View.VISIBLE
+                layoutSplash.visibility = View.VISIBLE
+                layoutNoInternet.visibility = View.GONE
+                requestForWebview()
+            } else {
+                Toast.makeText(mContext, "Нет подключения к интернету", Toast.LENGTH_SHORT).show()
+            }
         }
+    }
+
+    private fun registerNetworkCallback() {
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                connectivityManager.registerDefaultNetworkCallback(networkCallback)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка регистрации сетевого callback: ${e.message}")
+        }
+    }
+
+    private fun unregisterNetworkCallback() {
+        try {
+            val connectivityManager = getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
+                connectivityManager.unregisterNetworkCallback(networkCallback)
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Ошибка отмены регистрации сетевого callback: ${e.message}")
+        }
+    }
+
+    private fun showNoInternetScreen() {
+        prgs.visibility = View.GONE
+        mWebView.visibility = View.GONE
+        swipeRefresh.visibility = View.GONE
+        layoutSplash.visibility = View.GONE
+        layoutNoInternet.visibility = View.VISIBLE
+        swipeRefresh.isRefreshing = false
     }
 
     private fun requestForWebview() {
@@ -123,11 +188,7 @@ class MainActivity : Activity() {
             layoutNoInternet.visibility = View.GONE
             mWebView.loadUrl(URL)
         } else {
-            prgs.visibility = View.GONE
-            mWebView.visibility = View.GONE
-            swipeRefresh.visibility = View.GONE
-            layoutSplash.visibility = View.GONE
-            layoutNoInternet.visibility = View.VISIBLE
+            showNoInternetScreen()
             return
         }
 
@@ -140,6 +201,7 @@ class MainActivity : Activity() {
         mWebView.settings.domStorageEnabled = true
         mWebView.settings.databaseEnabled = true
         mWebView.settings.setSupportMultipleWindows(false)
+        mWebView.settings.cacheMode = WebSettings.LOAD_DEFAULT
 
         // ОБРАБОТЧИК СКАЧИВАНИЯ APK
         mWebView.setDownloadListener { url, userAgent, contentDisposition, mimetype, contentLength ->
@@ -170,11 +232,7 @@ class MainActivity : Activity() {
                 if (internetCheck(mContext)) {
                     view.loadUrl(url)
                 } else {
-                    prgs.visibility = View.GONE
-                    mWebView.visibility = View.GONE
-                    swipeRefresh.visibility = View.GONE
-                    layoutSplash.visibility = View.GONE
-                    layoutNoInternet.visibility = View.VISIBLE
+                    showNoInternetScreen()
                 }
                 return true
             }
@@ -199,6 +257,18 @@ class MainActivity : Activity() {
                 Handler(Looper.getMainLooper()).postDelayed({
                     layoutSplash.visibility = View.GONE
                 }, 2000)
+            }
+
+            override fun onReceivedError(
+                view: WebView?,
+                errorCode: Int,
+                description: String?,
+                failingUrl: String?
+            ) {
+                super.onReceivedError(view, errorCode, description, failingUrl)
+                if (!internetCheck(mContext)) {
+                    showNoInternetScreen()
+                }
             }
         }
 
@@ -310,6 +380,11 @@ class MainActivity : Activity() {
         return true
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        unregisterNetworkCallback()
+    }
+
     companion object {
         internal var TAG = "---MainActivity"
         val INPUT_FILE_REQUEST_CODE = 1
@@ -327,7 +402,11 @@ class MainActivity : Activity() {
 
             return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 val network = connectivityManager.activeNetwork
-                network != null
+                val capabilities = connectivityManager.getNetworkCapabilities(network)
+                network != null && capabilities != null && 
+                (capabilities.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) ||
+                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR) ||
+                 capabilities.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET))
             } else {
                 @Suppress("DEPRECATION")
                 val networkInfo = connectivityManager.activeNetworkInfo
