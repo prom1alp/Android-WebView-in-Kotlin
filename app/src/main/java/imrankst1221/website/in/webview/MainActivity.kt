@@ -68,6 +68,12 @@ class MainActivity : Activity() {
         layoutNoInternet = findViewById<View>(R.id.layout_no_internet) as RelativeLayout
         swipeRefresh = findViewById(R.id.swipe_refresh)
 
+        // ========== ОЧИСТКА КЭША ПРИ ЗАГРУЗКЕ ПРИЛОЖЕНИЯ ==========
+        // Очищаем только кэш, НЕ трогаем cookies и сессию
+        mWebView.clearCache(true)
+        Log.d(TAG, "Кэш очищен при запуске приложения")
+        // =========================================================
+
         // Настройка свайпа для обновления
         swipeRefresh.setOnRefreshListener {
             mWebView.reload()
